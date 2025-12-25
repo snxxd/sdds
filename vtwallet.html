@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>VT Wallet Course</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<style>
+body {
+    margin: 0;
+    font-family: Arial, sans-serif;
+    background: #0b1220;
+    color: #e5e7eb;
+}
+
+header {
+    text-align: center;
+    padding: 30px;
+}
+
+header h1 {
+    display: inline-block;
+    padding: 12px 30px;
+    border: 2px solid #38bdf8;
+    border-radius: 16px;
+    text-decoration: underline;
+    color: #38bdf8;
+    box-shadow: 0 0 25px rgba(56,189,248,0.6);
+}
+
+.container {
+    max-width: 1100px;
+    margin: auto;
+    padding: 20px;
+}
+
+.rates {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px,1fr));
+    gap: 15px;
+    margin-bottom: 40px;
+}
+
+.card {
+    background: #020617;
+    border-radius: 14px;
+    padding: 20px;
+    text-align: center;
+}
+
+.price {
+    font-size: 24px;
+    font-weight: bold;
+    color: #38bdf8;
+}
+
+.converter {
+    background: #020617;
+    border-radius: 14px;
+    padding: 25px;
+    margin-bottom: 40px;
+    text-align: center;
+}
+
+.converter input,
+.converter select,
+.converter button {
+    padding: 12px;
+    font-size: 16px;
+    border-radius: 8px;
+    border: none;
+    margin: 5px;
+}
+
+.converter button {
+    background: #38bdf8;
+    cursor: pointer;
+}
+
+.result {
+    margin-top: 15px;
+    font-size: 20px;
+    color: #22c55e;
+}
+
+canvas {
+    background: #020617;
+    border-radius: 14px;
+    padding: 15px;
+}
+</style>
+</head>
+
+<body>
+
+<header>
+    <h1>VT Wallet Course</h1>
+</header>
+
+<div class="container">
+
+<div class="rates">
+    <div class="card"><h3>USD</h3><div class="price" id="usd">USD</div></div>
+    <div class="card"><h3>EUR</h3><div class="price" id="eur">EUR</div></div>
+    <div class="card"><h3>RUB</h3><div class="price" id="rub">RUB</div></div>
+    <div class="card"><h3>KZT</h3><div class="price" id="kzt">KZT</div></div>
+    <div class="card"><h3>BTC</h3><div class="price" id="btc">BTC</div></div>
+</div>
+
+<div class="converter">
+    <h2>Currency Converter</h2>
+    <input type="number" id="amount" placeholder="Amount">
+    <select id="from">
+        <option>USD</option><option>EUR</option>
+        <option>RUB</option><option>KZT</option><option>BTC</option>
+    </select>
+    >
+    <select id="to">
+        <option>USD</option><option>EUR</option>
+        <option>RUB</option><option>KZT</option><option>BTC</option>
+    </select>
+    <br>
+    <button onclick="convert()">Convert</button>
+    <div class="result" id="result"></div>
+</div>
+
+<h2>Bitcoin Price Chart</h2>
+<canvas id="btcChart" height="120"></canvas>
+
+</div>
+
+<script>
+const API = "http://YOUR_SERVER_IP:5000";
+let rates = {};
+let btcUSD = 0;
+let chart;
+
+async function loadRates() {
+    const r = await fetch(API + "/api/rates").then(r => r.json());
+    rates = r;
+    btcUSD = r.BTC;
+
+    usd.innerText = "1.00";
+    eur.innerText = r.EUR.toFixed(2);
+    rub.innerText = r.RUB.toFixed(2);
+    kzt.innerText = r.KZT.toFixed(2);
+    btc.innerText = btcUSD.toLocaleString();
+}
+
+function convert() {
+    const amount = parseFloat(amountInput.value);
+    if (!amount) return;
+
+    const from = fromSelect.value;
+    const to = toSelect.value;
+
+    let usd;
+    if (from === "BTC") usd = amount * btcUSD;
+    else usd = amount / rates[from];
+
+    let result;
+    if (to === "BTC") result = usd / btcUSD;
+    else result = usd * rates[to];
+
+    resultDiv.innerText = `${amount} ${from} = ${result.toFixed(6)} ${to}`;
+}
+
+async function loadChart() {
+    const data = await fetch(API + "/api/chart").then(r => r.json());
+    const labels = data.map(p => new Date(p[0]).toLocaleTimeString());
+    const prices = data.map(p => p[1]);
+
+    if (!chart) {
+        chart = new Chart(btcChart, {
+            type: "line",
+            data: {
+                labels: labels,
+                datasets: [{
+                    data: prices,
+                    borderColor: "#38bdf8",
+                    tension: 0.3,
+                    pointRadius: 0
+                }]
+            },
+            options: {
+                plugins: { legend: { display: false } },
+                scales: { x: { display: false } }
+            }
+        });
+    } else {
+        chart.data.labels = labels;
+        chart.data.datasets[0].data = prices;
+        chart.update();
+    }
+}
+
+setInterval(loadRates, 60000);
+setInterval(loadChart, 60000);
+
+loadRates();
+loadChart();
+</script>
+
+</body>
+</html>
